@@ -27,16 +27,16 @@ public static class InjectBatchGenerator
         bool injectValidated = false;
         
         //Check if commandline args contains injector validation argument
-        foreach(string s in args) { 
+        foreach(string s in args) 
+        { 
             if (s.Contains(injectionValidationArg))
             {
                 injectValidated = true;
-                Debug.Log("Project started through VD Streamer");
+                Debug.Log("[Inject Batch Generator] Project started through VD Streamer");
             }
         }
         if (!injectValidated)
         {
-            
             if (File.Exists(shellScriptPath))
             {
                 File.Delete(shellScriptPath);
@@ -52,38 +52,44 @@ public static class InjectBatchGenerator
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
             });
-            
-            
+            p.WaitForExit();
             var PID = Process.GetCurrentProcess().Id;
             var vStreamerPath = p.StandardOutput.ReadToEnd().Replace("/","\\").Replace(Environment.NewLine,"");
-            p.WaitForExit();
             var findProcess = $"(Get-Process | Where-Object {{$_.Id -eq {PID.ToString()}}}).WaitForExit();";
             var wait = $"";
-            var launchUnityInjected = $"&\"{vStreamerPath}VirtualDesktop.Streamer.exe\" \"{unityExePath}\" {injectionValidationArg} -useHub -hubIPC -cloudEnvironment production -projectPath \"\\\"\"{projectRootPath}\\\"\"\";";
+            var launchUnityInjected = "";
+            if (projectRootPath.Contains(" "))
+            {
+                launchUnityInjected = $"&\"{vStreamerPath}VirtualDesktop.Streamer.exe\" \"{unityExePath}\" {injectionValidationArg} -useHub -hubIPC -cloudEnvironment production -projectPath \"\\\"\"{projectRootPath}\\\"\"\";";
+                Debug.Log("[Inject Batch Generator] whitespace project path");
+            }
+            else
+            {
+                launchUnityInjected = $"&\"{vStreamerPath}VirtualDesktop.Streamer.exe\" \"{unityExePath}\" {injectionValidationArg} -useHub -hubIPC -cloudEnvironment production -projectPath {projectRootPath};";
+                Debug.Log("[Inject Batch Generator] non-whitespace project path");
+
+            }
             using (StreamWriter fs = File.CreateText(shellScriptPath))
             {
                 fs.WriteLine(findProcess);
                 // fs.WriteLine(wait);
                 fs.WriteLine(launchUnityInjected);
-                Console.Write(launchUnityInjected);
                 fs.Close();
             }
-
-            
             var startInfo = new ProcessStartInfo
             {
                 WorkingDirectory = projectRootPath,
                 FileName = "powershell.exe",
                 //-NoExit -NoProfile -ExecutionPolicy unrestricted
-                Arguments = $".\\{shellScriptFileName.Replace(" ","^ ")} -NoExit",
+                Arguments = $".\\{shellScriptFileName.Replace(" ","^ ")} -NoProfile -ExecutionPolicy unrestricted",
                 UseShellExecute = true,
                 RedirectStandardOutput = false,
             };
             new Thread(() =>
             {
-                Debug.Log("Injecting shell");
+                Debug.Log("[Inject Batch Generator] Injecting shell");
                 Thread.CurrentThread.IsBackground = true;
-                Process shellProcess = Process.Start(startInfo);
+                Process.Start(startInfo);
             }).Start();
             EditorApplication.Exit(0);
             // if (EditorApplication.isPlaying || EditorApplication.isPaused)
