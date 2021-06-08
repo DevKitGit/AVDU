@@ -1,5 +1,13 @@
 {
   "dependencies": {
+    "com.codingo.boop": {
+      "version": "file:VRDInjector",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.xr.management": "4.0.5"
+      }
+    },
     "com.unity.collab-proxy": {
       "version": "1.5.7",
       "depth": 0,

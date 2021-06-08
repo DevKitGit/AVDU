@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using UnityEditor;
 using UnityEngine;
@@ -10,9 +9,6 @@ using Debug = UnityEngine.Debug;
 [InitializeOnLoad]
 public static class InjectBatchGenerator
 {
-
-    // static InjectBatchGenerator()
-
     static InjectBatchGenerator()
     {
         var projectRootPath = @Path.GetDirectoryName(Application.dataPath);
@@ -21,36 +17,44 @@ public static class InjectBatchGenerator
         //Retrieve command-line arguments for this process
         string[] args = Environment.GetCommandLineArgs();
         string injectionValidationArg = "-injectedTrue";
-        string[] injectionArgs = {"-accept-apiupdate", injectionValidationArg, "-useHub", "-hubIPC", "-projectPath"};
         bool injectValidated = false;
-        //Check if commandline args contains injector validation argument
-        for(int i = 0; i < args.Length; i++)
+        foreach (var t in args)
         {
-            if (args[i].Contains(injectionValidationArg))
+            if (t.Contains(injectionValidationArg))
             {
                 injectValidated = true;
-
-                Debug.Log("[Inject Batch Generator] Project started through VD Streamer");
-            }
-            if (injectionArgs.Contains(args[i]) && !string.IsNullOrEmpty(args[i]))
-            {
-                if (args[i].Contains("-projectPath"))
-                {
-                    args[i + 1] = "";
-                }
-                args[i] = "";
-                
+                Debug.Log("[Inject Batch Generator] Virtual Desktop streamer injected into project");
             }
         }
-
-        string injectionString = string.Join(" ", args);
-        Debug.Log($"[Inject Batch Generator] {injectionString}");
         if (!injectValidated)
         {
-            if (Time.time > 30)
+            //Check if commandline args contains injector validation argument
+            string preQuote = "\\\"\\\\\"\"\"\\\"";
+            string postQuote = "\\\\\"\\\"\"\"\\\"";
+            string injectionString = injectionValidationArg;
+            for (int i = 1; i < args.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(args[i]))
+                {
+                    if (args[i][0] == '-')
+                    {
+                        injectionString += (" " + args[i]);
+                    }
+                    else if (!args[i].Contains(" "))
+                    {
+                        injectionString += (" " + args[i]);
+                    }
+                    else
+                    {
+                        injectionString += (" " + preQuote + args[i] + postQuote);
+                    }
+                }
+            }
+            Debug.Log($"[Inject Batch Generator] {injectionString}");
+            if (EditorApplication.timeSinceStartup > 30)
             {
                 EditorUtility.DisplayDialog(
-                    "This Unity Editor isn't injected by Virtual Desktop Streamer",
+                    "This editor instance isn't injected by Virtual Desktop Streamer",
                     "Close the project, (re)start Virtual Desktop streamer, and then launch the project again.",
                     "OK",
                     "");
@@ -63,9 +67,10 @@ public static class InjectBatchGenerator
                     @"(get-item 'REGISTRY::HKEY_LOCAL_MACHINE\SOFTWARE\Virtual Desktop, Inc.\Virtual Desktop Streamer').GetValue('Path')",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
+                CreateNoWindow = true
             });
             p.WaitForExit();
-            var PID = Process.GetCurrentProcess().Id;
+            var pid = Process.GetCurrentProcess().Id;
             var vStreamerPath = p.StandardOutput.ReadToEnd().Replace("/", "\\").Replace(Environment.NewLine, "");
             Debug.Log("[Inject Batch Generator] " + vStreamerPath);
             var startInfo = new ProcessStartInfo
@@ -73,9 +78,10 @@ public static class InjectBatchGenerator
                 WorkingDirectory = vStreamerPath,
                 FileName = "powershell.exe",
                 Arguments =
-                    $"&(Get-Process | Where-Object {{$_.Id -eq {PID.ToString()}}}).WaitForExit();\".\\VirtualDesktop.Streamer.exe\" \\\"{unityExePath}\\\" -accept-apiupdate {injectionValidationArg} -projectPath \\\"\\\\\"\"\"\\\"{projectRootPath}\\\\\"\\\"\"\"\\\";",
+                    $"&(Get-Process | Where-Object {{$_.Id -eq {pid.ToString()}}}).WaitForExit();\".\\VirtualDesktop.Streamer.exe\" \\\"{unityExePath}\\\" {injectionString};",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
+                CreateNoWindow = true
             };
             new Thread(() =>
             {

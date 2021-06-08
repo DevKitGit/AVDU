@@ -1,0 +1,11 @@
+{
+  "name": "com.codingo.VRDInjector",
+  "displayName": "Virtual Desktop injector",
+  "version": "1.0.0",
+  "unity": "2019.2",
+  "keywords": ["Wireless", "Streaming", "Editor", "Virtual Desktop", "VR", "Oculus", "Quest"],
+  "description": "Virtual Desktop injector",
+  "dependencies": {
+    "com.unity.xr.management" : "4.0.5"
+  }
+}
