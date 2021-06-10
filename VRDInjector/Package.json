@@ -1,0 +1,23 @@
+{
+  "name": "com.codingo.vrdinjector",
+  "displayName": "Virtual Desktop injector",
+  "version": "1.0.0",
+  "unity": "2018.2",
+  "keywords": [
+    "Wireless",
+    "Streaming",
+    "Editor",
+    "Virtual Desktop",
+    "VR",
+    "Oculus",
+    "Quest"
+  ],
+  "description": "This package automatically injects the project with virtual desktop streamer on launch, allowing wireless streaming of Unity Editor Play-mode to supported headsets",
+  "dependencies": {
+    "com.unity.xr.management": "4.0.5"
+  },
+  "repository": {
+    "url": "https://github.com/CoDingoDK/WirelessUnityPlayMode",
+    "type": "git"
+  }
+}

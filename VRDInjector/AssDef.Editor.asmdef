@@ -1,5 +1,5 @@
 {
-    "name": "AssDef.Editor",
+    "name": "AssemblyDef.Editor",
     "rootNamespace": "",
     "references": [],
     "includePlatforms": [
