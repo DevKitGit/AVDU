@@ -9,13 +9,19 @@ using Debug = UnityEngine.Debug;
 [InitializeOnLoad]
 public static class InjectBatchGenerator
 {
+    private static string debugName = "[Inject Batch Generator]";
     static InjectBatchGenerator()
     {
+        var debug = EditorPrefs.GetBool("AVDU Debug",false);
         var projectRootPath = @Path.GetDirectoryName(Application.dataPath);
-        Debug.Log($"[Inject Batch Generator] {projectRootPath}");
+        if (debug)
+        {
+            Debug.Log($"{debugName} Found project root at: {projectRootPath}");
+        }
         var unityExePath = EditorApplication.applicationPath.Replace("/", "\\");
         //Retrieve command-line arguments for this process
         string[] args = Environment.GetCommandLineArgs();
+        
         string injectionValidationArg = "-injectedTrue";
         bool injectValidated = false;
         foreach (var t in args)
@@ -23,7 +29,10 @@ public static class InjectBatchGenerator
             if (t.Contains(injectionValidationArg))
             {
                 injectValidated = true;
-                Debug.Log("[Inject Batch Generator] Virtual Desktop streamer injected into project");
+                if (debug)
+                {
+                    Debug.Log($"{debugName} Project was launched using Virtual Desktop injection");
+                }
             }
         }
         if (!injectValidated)
@@ -50,11 +59,19 @@ public static class InjectBatchGenerator
                     }
                 }
             }
-            Debug.Log($"[Inject Batch Generator] {injectionString}");
-            if (EditorApplication.timeSinceStartup > 30)
+
+            if (debug)
             {
+                Debug.Log($"{debugName} Generated escaped Unity injection string: {injectionString}");
+            }
+            if (EditorApplication.timeSinceStartup > 45)
+            {
+                if (debug)
+                {
+                    Debug.Log($"{debugName} Unity Editor was running at the time of attempted injection: {EditorApplication.timeSinceStartup}");
+                }
                 EditorUtility.DisplayDialog(
-                    "This editor instance isn't injected by Virtual Desktop Streamer",
+                    "This editor instance wasn't launched by Virtual Desktop Streamer",
                     "Close the project, (re)start Virtual Desktop streamer, and then launch the project again.",
                     "OK",
                     "");
@@ -71,25 +88,37 @@ public static class InjectBatchGenerator
             });
             p.WaitForExit();
             var pid = Process.GetCurrentProcess().Id;
+
             var vStreamerPath = p.StandardOutput.ReadToEnd().Replace("/", "\\").Replace(Environment.NewLine, "");
-            Debug.Log("[Inject Batch Generator] " + vStreamerPath);
-            var startInfo = new ProcessStartInfo
+            if (vStreamerPath.Contains("VirtualDesktop.Streamer.exe") && new FileInfo(vStreamerPath).Exists)
             {
-                WorkingDirectory = vStreamerPath,
-                FileName = "powershell.exe",
-                Arguments =
-                    $"&(Get-Process | Where-Object {{$_.Id -eq {pid.ToString()}}}).WaitForExit();\".\\VirtualDesktop.Streamer.exe\" \\\"{unityExePath}\\\" {injectionString};",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-            new Thread(() =>
-            {
-                Debug.Log("[Inject Batch Generator] Injecting shell command using detached child process");
-                Thread.CurrentThread.IsBackground = true;
-                Process.Start(startInfo);
-            }).Start();
-            EditorApplication.Exit(0);
+                
+                EditorPrefs.SetString("AVDU VDS path",vStreamerPath);
+                if (debug)
+                {
+                    Debug.Log($"{debugName} VirtualDesktop.Streamer.exe path fetched from registry: {vStreamerPath}");
+                    var startInfo = new ProcessStartInfo
+                    {
+                        WorkingDirectory = vStreamerPath,
+                        FileName = "powershell.exe",
+                        Arguments =
+                            $"&(Get-Process | Where-Object {{$_.Id -eq {pid.ToString()}}}).WaitForExit();start \"\" \".\\VirtualDesktop.Streamer.exe;\".\\VirtualDesktop.Streamer.exe\" \\\"{unityExePath}\\\" {injectionString};",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true
+                    };
+                    new Thread(() =>
+                    {
+                        Thread.CurrentThread.IsBackground = true;
+                        Process.Start(startInfo);
+                    }).Start();
+                    if (debug)
+                    {
+                        Debug.Log($"{debugName} Detached child process successfully launched, attempting to close Unity Editor");
+                    }
+                    EditorApplication.Exit(0);
+                }
+            }
         }
     }
 }
