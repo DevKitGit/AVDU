@@ -1,5 +1,5 @@
 {
-    "name": "AssemblyDef.Editor",
+    "name": "com.codingo.avdu.Editor.asmdef",
     "rootNamespace": "",
     "references": [],
     "includePlatforms": [

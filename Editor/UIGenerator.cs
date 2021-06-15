@@ -1,94 +1,99 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 // Register a SettingsProvider using IMGUI for the drawing framework:
-static class MyCustomSettingsIMGUIRegister
+namespace Editor
 {
-    [SettingsProvider]
-    public static SettingsProvider CreateMyCustomSettingsProvider()
+    static class AvduSettingsIMGUIRegister
     {
-        var provider = new SettingsProvider("Project/MyCustomIMGUISettings", SettingsScope.Project)
-        {
-            label = "Virtual Desktop Injector",
-            guiHandler = GUIHandler,
-            keywords = new HashSet<string>(new[] { "Number", "Some String" })
-        };
-        SavedPath = EditorPrefs.GetString("AVDU VDS path","");
-        _reviveVD = EditorPrefs.GetBool("AVDU reviveVD", false);
-        _debug = EditorPrefs.GetBool("AVDU Debug", false);
-        return provider;
-    }
-
-    private static string SavedPath { get; set; } = string.Empty;
-    private static bool _reviveVD = true;
-    private static bool _debug = true;
-    private static string Path { get; set; } = string.Empty;
-
-    private static void GUIHandler(string obj)
-    {
-        // EditorGUI.BeginChangeCheck();
-        var lWidth = EditorGUIUtility.labelWidth;
-        EditorGUIUtility.labelWidth = 250;
+        private static string NewPath { get; set; } = string.Empty;
+        private static string SavedPath { get; set; }
+        private static bool ReviveVd { get; set; }
+        private static bool RunningCheck { get; set; }
+        private static bool ConnectedCheck { get; set; }
+        private static bool AvduDebug { get; set; }
         
-        EditorGUILayout.BeginHorizontal();
-        var tempPath = Path;
-        if (String.IsNullOrEmpty(Path.Trim()))
+        [SettingsProvider]
+        public static SettingsProvider AvduSettingsProvider()
         {
-            Path = EditorPrefs.GetString("AVDU VDS path", "");
-        }
-        Path = EditorGUILayout.TextField("Virtual Desktop Streamer Path", Path);
-        
-        if (GUILayout.Button("find",GUILayout.Width(40)))
-        {
-            Path = EditorUtility.OpenFolderPanel("Find the Virtual Desktop streamer executable", Path,"");
-        }
-        EditorGUILayout.EndHorizontal();
-        
-        if (!new FileInfo($"{Path}/VirtualDesktop.Streamer.exe").Exists)
-        {
-            EditorGUILayout.HelpBox("Please supply the correct folder path containing the 'VirtualDesktop.Streamer.exe' file", MessageType.Error);
-            return;
+            var provider = new SettingsProvider("Project/AvduSettings", SettingsScope.Project)
+            {
+                label = "AVDU Launcher",
+                guiHandler = GUIHandler,
+            };
+            SavedPath = EditorPrefs.GetString(AvduKeys.VdsPath,"");
+            ReviveVd = EditorPrefs.GetBool(AvduKeys.ReviveVd, false);
+            
+            AvduDebug = EditorPrefs.GetBool(AvduKeys.DebugMode, false);
+            return provider;
         }
 
-        if (!Path.Equals(tempPath))
+  
+        private static void GUIHandler(string obj)
         {
-            SavedPath = Path;
-            EditorPrefs.SetString("AVDU VDS path",SavedPath);
-        }
-       
-
-        var toggleReviveVD = EditorGUILayout.Toggle("Restart VD Streamer if not alive on play", _reviveVD);
-        if (toggleReviveVD != _reviveVD)
-        {
-            _reviveVD = toggleReviveVD;
-            EditorPrefs.SetBool("AVDU reviveVD", toggleReviveVD);
-        }
-        var injectorDebug = EditorGUILayout.Toggle("Debugging mode", _debug);
-        if (injectorDebug != _debug)
-        {
-            _debug = injectorDebug;
-            EditorPrefs.SetBool("AVDU Debug", injectorDebug);
-        }
+            var lWidth = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth = 285;
+            EditorGUILayout.BeginHorizontal();
+            var tempPath = NewPath;
+            if (String.IsNullOrEmpty(NewPath.Trim()))
+            {
+                NewPath = EditorPrefs.GetString(AvduKeys.VdsPath, "");
+            }
+            NewPath = EditorGUILayout.TextField("Virtual Desktop Streamer Path", NewPath);
         
-        EditorGUIUtility.labelWidth = lWidth;
+            if (GUILayout.Button("find",GUILayout.Width(40)))
+            {
+                NewPath = EditorUtility.OpenFolderPanel("Find the folder containing the 'VirtualDesktop.Streamer.exe' file", NewPath,"");
+            }
+            EditorGUILayout.EndHorizontal();
         
-        // var originalColr = GUI.backgroundColor;
-        // GUI.backgroundColor = Color.magenta;
-        // if (GUILayout.Button("DONT CLICK ME aaaaaaaaaa"))
-        // {
-        //     Debug.Log("AAAAAAAAAAAAAAAAAAAAAAAAAAA");
-        // }
-        // GUI.backgroundColor = originalColr;
+            if (!new FileInfo($"{NewPath}/VirtualDesktop.Streamer.exe").Exists)
+            {
+                EditorGUILayout.HelpBox("Please supply the correct folder path containing the 'VirtualDesktop.Streamer.exe' file", MessageType.Error);
+                return;
+            }
+            if (!NewPath.Equals(tempPath))
+            {
+                SavedPath = NewPath;
+                EditorPrefs.SetString(AvduKeys.VdsPath,SavedPath);
+            }
+            EditorGUILayout.LabelField("Disable Play Mode if Virtual Desktop:");
+            EditorGUI.indentLevel++;
+            var toggleRunningCheck = EditorGUILayout.Toggle("Is not running", RunningCheck);
+            if (toggleRunningCheck != RunningCheck)
+            {
+                RunningCheck = toggleRunningCheck;
+                EditorPrefs.SetBool(AvduKeys.DisablePlayModeRunning, toggleRunningCheck);
+            }
 
-        // if (EditorGUI.EndChangeCheck())
-        // {
-        //     
-        // }
-        //GUILayout.
+            if(RunningCheck)
+            {
+                EditorGUI.indentLevel++;
+                var toggleReviveVd = EditorGUILayout.Toggle("Also try to restart Virtual Desktop?", ReviveVd);
+                if (toggleReviveVd != ReviveVd)
+                {
+                    ReviveVd = toggleReviveVd;
+                    EditorPrefs.SetBool(AvduKeys.ReviveVd, toggleReviveVd);
+                }
+                EditorGUI.indentLevel--;
+            }
+            var toggleConnectedCheck = EditorGUILayout.Toggle("Is not connected to a headset", ConnectedCheck);
+            if (toggleConnectedCheck != ConnectedCheck)
+            {
+                ConnectedCheck = toggleConnectedCheck;
+                EditorPrefs.SetBool(AvduKeys.DisablePlayModeConnected, toggleConnectedCheck);
+            }
+            EditorGUI.indentLevel--;
+            var toggleDebug = EditorGUILayout.Toggle("Enable Debug mode", AvduDebug);
+            if (toggleDebug != AvduDebug)
+            {
+                AvduDebug = toggleDebug;
+                EditorPrefs.SetBool(AvduKeys.DebugMode, toggleDebug);
+            }
+            EditorGUIUtility.labelWidth = lWidth;
+        }
     }
 }
